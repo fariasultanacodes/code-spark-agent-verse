@@ -1,327 +1,152 @@
-import { useState } from 'react';
-import Editor from '@monaco-editor/react';
-import { Sandpack } from '@codesandbox/sandpack-react';
-import GeminiChat from './GeminiChat';
+
+import React, { useState } from 'react';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Badge } from './ui/badge';
+import { 
+  Sidebar,
+  SidebarContent,
+  SidebarProvider,
+  SidebarTrigger,
+  SidebarInset
+} from './ui/sidebar';
 import FileExplorer from './FileExplorer';
 import FileTabs from './FileTabs';
-import { Button } from './ui/button';
-import { Play, Code, MessageSquare, Settings, Sidebar } from 'lucide-react';
 import EnhancedAIChat from './EnhancedAIChat';
-
-interface FileItem {
-  id: string;
-  name: string;
-  type: 'file' | 'folder';
-  content?: string;
-  children?: FileItem[];
-  isOpen?: boolean;
-}
+import GeminiChat from './GeminiChat';
+import LandingPage from './LandingPage';
+import { Code, Bot, Home, Palette } from 'lucide-react';
 
 const CodeEditor = () => {
-  const [files, setFiles] = useState<FileItem[]>([
-    {
-      id: 'app-js',
-      name: 'App.js',
-      type: 'file',
-      content: `import React from 'react';
-
-function App() {
-  const [count, setCount] = React.useState(0);
-
-  return (
-    <div style={{ 
-      padding: '20px', 
-      fontFamily: 'Arial, sans-serif',
-      textAlign: 'center' 
-    }}>
-      <h1>React Counter App</h1>
-      <div style={{ margin: '20px 0' }}>
-        <p>Count: {count}</p>
-        <button 
-          onClick={() => setCount(count + 1)}
-          style={{
-            padding: '10px 20px',
-            margin: '0 10px',
-            backgroundColor: '#007acc',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          Increment
-        </button>
-        <button 
-          onClick={() => setCount(count - 1)}
-          style={{
-            padding: '10px 20px',
-            margin: '0 10px',
-            backgroundColor: '#dc3545',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          Decrement
-        </button>
-      </div>
-    </div>
-  );
-}
-
-export default App;`
-    },
-    {
-      id: 'components-js',
-      name: 'Components.js',
-      type: 'file',
-      content: `import React from 'react';
-
-export const Button = ({ children, onClick, variant = 'primary' }) => {
-  const baseStyle = {
-    padding: '10px 20px',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontWeight: 'bold'
-  };
-
-  const variantStyles = {
-    primary: { backgroundColor: '#007acc', color: 'white' },
-    secondary: { backgroundColor: '#6c757d', color: 'white' },
-    danger: { backgroundColor: '#dc3545', color: 'white' }
-  };
-
-  return (
-    <button 
-      style={{ ...baseStyle, ...variantStyles[variant] }}
-      onClick={onClick}
-    >
-      {children}
-    </button>
-  );
-};`
-    }
+  const [activeTab, setActiveTab] = useState('landing');
+  const [files, setFiles] = useState([
+    { id: '1', name: 'index.tsx', content: '// Welcome to the AI Code Editor\nconsole.log("Hello World!");', language: 'typescript' },
+    { id: '2', name: 'App.tsx', content: 'import React from "react";\n\nfunction App() {\n  return <div>Hello React!</div>;\n}', language: 'typescript' },
   ]);
+  const [activeFile, setActiveFile] = useState(files[0]);
+  const [openFiles, setOpenFiles] = useState([files[0]]);
 
-  const [openTabs, setOpenTabs] = useState<string[]>(['app-js']);
-  const [activeTab, setActiveTab] = useState<'code' | 'preview'>('code');
-  const [activeFileId, setActiveFileId] = useState<string>('app-js');
-  const [chatVisible, setChatVisible] = useState(false);
-  const [sidebarVisible, setSidebarVisible] = useState(true);
-  const [currentFileContent, setCurrentFileContent] = useState<string | undefined>(files.find(f => f.id === activeFileId)?.content);
-
-  const activeFile = files.find(f => f.id === activeFileId);
-
-  const handleEditorChange = (value: string | undefined) => {
-    if (value !== undefined && activeFileId) {
-      setFiles(prevFiles => 
-        prevFiles.map(file => 
-          file.id === activeFileId 
-            ? { ...file, content: value }
-            : file
-        )
-      );
-    }
+  const handleCodeUpdate = (code: string) => {
+    console.log('Code updated:', code);
   };
-
-  const handleFileSelect = (fileId: string) => {
-    setActiveFileId(fileId);
-    if (!openTabs.includes(fileId)) {
-      setOpenTabs(prev => [...prev, fileId]);
-    }
-  };
-
-  const handleTabClose = (tabId: string) => {
-    const newTabs = openTabs.filter(id => id !== tabId);
-    setOpenTabs(newTabs);
-    
-    if (tabId === activeFileId && newTabs.length > 0) {
-      setActiveFileId(newTabs[newTabs.length - 1]);
-    }
-  };
-
-  const handleFileCreate = (name: string, type: 'file' | 'folder') => {
-    const newFile: FileItem = {
-      id: `${name}-${Date.now()}`,
-      name,
-      type,
-      content: type === 'file' ? '' : undefined,
-      children: type === 'folder' ? [] : undefined,
-      isOpen: type === 'folder' ? false : undefined
-    };
-    
-    setFiles(prev => [...prev, newFile]);
-  };
-
-  const handleFileDelete = (fileId: string) => {
-    setFiles(prev => prev.filter(f => f.id !== fileId));
-    setOpenTabs(prev => prev.filter(id => id !== fileId));
-    
-    if (fileId === activeFileId && openTabs.length > 1) {
-      const remainingTabs = openTabs.filter(id => id !== fileId);
-      setActiveFileId(remainingTabs[remainingTabs.length - 1]);
-    }
-  };
-
-  const handleFileRename = (fileId: string, newName: string) => {
-    setFiles(prev => 
-      prev.map(file => 
-        file.id === fileId ? { ...file, name: newName } : file
-      )
-    );
-  };
-
-  const getSandpackFiles = () => {
-    const sandpackFiles: Record<string, string> = {};
-    files.forEach(file => {
-      if (file.type === 'file' && file.content) {
-        sandpackFiles[`/${file.name}`] = file.content;
-      }
-    });
-    return sandpackFiles;
-  };
-
-  const openTabsData = openTabs.map(tabId => {
-    const file = files.find(f => f.id === tabId);
-    return file ? { id: file.id, name: file.name } : null;
-  }).filter(Boolean) as { id: string; name: string }[];
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSidebarVisible(!sidebarVisible)}
-              className="text-gray-300 hover:text-white p-1"
-            >
-              <Sidebar className="w-4 h-4" />
-            </Button>
-            <Code className="w-6 h-6 text-blue-400" />
-            <h1 className="text-xl font-bold text-white">AI Code Studio</h1>
-          </div>
-          <div className="flex items-center space-x-1">
-            <Button
-              variant={activeTab === 'code' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setActiveTab('code')}
-              className="text-gray-300 hover:text-white"
-            >
-              <Code className="w-4 h-4 mr-2" />
-              Code
-            </Button>
-            <Button
-              variant={activeTab === 'preview' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setActiveTab('preview')}
-              className="text-gray-300 hover:text-white"
-            >
-              <Play className="w-4 h-4 mr-2" />
-              Preview
-            </Button>
-          </div>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant={chatVisible ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setChatVisible(!chatVisible)}
-            className="text-gray-300 hover:text-white"
-          >
-            <MessageSquare className="w-4 h-4 mr-2" />
-            AI Assistant
-          </Button>
-          <Button variant="ghost" size="sm" className="text-gray-300 hover:text-white">
-            <Settings className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full bg-gray-900 text-white">
+        <Sidebar>
+          <SidebarContent>
+            <div className="p-4">
+              <div className="flex items-center space-x-2 mb-6">
+                <Code className="w-6 h-6 text-purple-400" />
+                <span className="font-bold text-lg">AI Dev Studio</span>
+                <Badge className="bg-purple-600/20 text-purple-300 text-xs">Beta</Badge>
+              </div>
+              <FileExplorer 
+                files={files}
+                setFiles={setFiles}
+                activeFile={activeFile}
+                setActiveFile={setActiveFile}
+                openFiles={openFiles}
+                setOpenFiles={setOpenFiles}
+              />
+            </div>
+          </SidebarContent>
+        </Sidebar>
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* File Explorer Sidebar */}
-        {sidebarVisible && (
-          <div className="w-64 border-r border-gray-700">
-            <FileExplorer
-              files={files}
-              activeFileId={activeFileId}
-              onFileSelect={handleFileSelect}
-              onFileCreate={handleFileCreate}
-              onFileDelete={handleFileDelete}
-              onFileRename={handleFileRename}
-            />
-          </div>
-        )}
-
-        {/* Editor and Preview Area */}
-        <div className="flex-1 flex flex-col">
-          {/* File Tabs */}
-          <div className="flex-1">
-            <FileTabs
-              tabs={openTabsData}
-              activeTabId={activeFileId}
-              onTabSelect={setActiveFileId}
-              onTabClose={handleTabClose}
-            />
-          </div>
-
-          {/* Editor/Preview Content */}
-          <div className="flex-1 flex overflow-hidden">
-            {/* Left Panel - Editor or Preview */}
-            <div className={`${chatVisible ? 'w-2/3' : 'w-full'} flex flex-col`}>
-              {activeTab === 'code' ? (
-                <div className="flex-1">
-                  <Editor
-                    height="100%"
-                    defaultLanguage="javascript"
-                    value={currentFileContent}
-                    onChange={handleEditorChange}
-                    theme="vs-dark"
-                    options={{
-                      fontSize: 14,
-                      minimap: { enabled: false },
-                      scrollBeyondLastLine: false,
-                      automaticLayout: true,
-                    }}
-                  />
-                </div>
-              ) : (
-                <div className="flex-1 bg-white">
-                  <Sandpack
-                    template="react"
-                    files={{
-                      '/App.js': currentFileContent,
-                    }}
-                    options={{
-                      showNavigator: true,
-                      showTabs: true,
-                      showLineNumbers: true,
-                      editorHeight: '100%',
-                    }}
-                    theme="dark"
-                  />
-                </div>
-              )}
+        <SidebarInset>
+          <div className="flex flex-col h-screen">
+            {/* Header */}
+            <div className="border-b border-gray-700 p-4 flex items-center justify-between bg-gray-800/50">
+              <div className="flex items-center space-x-4">
+                <SidebarTrigger />
+                <h1 className="text-lg font-semibold">AI-Powered Development Platform</h1>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Badge variant="outline" className="border-green-500/50 text-green-400">
+                  Live Preview
+                </Badge>
+              </div>
             </div>
 
-            {/* Right Panel - Enhanced AI Chat */}
-            {chatVisible && (
-              <div className="w-1/3 border-l border-gray-700 bg-gray-800">
-                <EnhancedAIChat 
-                  code={currentFileContent} 
-                  onCodeUpdate={setCurrentFileContent}
-                />
-              </div>
-            )}
+            {/* Main Content Tabs */}
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+              <TabsList className="grid w-full grid-cols-4 bg-gray-800/50 border-b border-gray-700">
+                <TabsTrigger value="landing" className="flex items-center space-x-2">
+                  <Home className="w-4 h-4" />
+                  <span>Landing</span>
+                </TabsTrigger>
+                <TabsTrigger value="editor" className="flex items-center space-x-2">
+                  <Code className="w-4 h-4" />
+                  <span>Editor</span>
+                </TabsTrigger>
+                <TabsTrigger value="ai-chat" className="flex items-center space-x-2">
+                  <Bot className="w-4 h-4" />
+                  <span>AI Assistant</span>
+                </TabsTrigger>
+                <TabsTrigger value="gemini" className="flex items-center space-x-2">
+                  <Palette className="w-4 h-4" />
+                  <span>Gemini</span>
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="landing" className="flex-1 overflow-auto">
+                <LandingPage />
+              </TabsContent>
+
+              <TabsContent value="editor" className="flex-1 flex flex-col">
+                <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
+                  {/* Code Editor Panel */}
+                  <Card className="bg-gray-800/50 border-gray-700 flex flex-col">
+                    <div className="border-b border-gray-700 p-3">
+                      <FileTabs 
+                        openFiles={openFiles}
+                        activeFile={activeFile}
+                        setActiveFile={setActiveFile}
+                        setOpenFiles={setOpenFiles}
+                      />
+                    </div>
+                    <div className="flex-1 p-4">
+                      <div className="w-full h-full bg-gray-900 rounded border border-gray-600 p-4 font-mono text-sm">
+                        <pre className="text-green-400 whitespace-pre-wrap">
+                          {activeFile?.content || '// Select a file to edit'}
+                        </pre>
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Preview Panel */}
+                  <Card className="bg-gray-800/50 border-gray-700 flex flex-col">
+                    <div className="border-b border-gray-700 p-3">
+                      <h3 className="font-semibold flex items-center space-x-2">
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <span>Live Preview</span>
+                      </h3>
+                    </div>
+                    <div className="flex-1 p-4">
+                      <div className="w-full h-full bg-white rounded border border-gray-600 flex items-center justify-center">
+                        <div className="text-gray-600 text-center">
+                          <Code className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                          <p>Preview will appear here</p>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="ai-chat" className="flex-1">
+                <EnhancedAIChat code={activeFile?.content || ''} onCodeUpdate={handleCodeUpdate} />
+              </TabsContent>
+
+              <TabsContent value="gemini" className="flex-1">
+                <GeminiChat />
+              </TabsContent>
+            </Tabs>
           </div>
-        </div>
+        </SidebarInset>
       </div>
-    </div>
+    </SidebarProvider>
   );
 };
 

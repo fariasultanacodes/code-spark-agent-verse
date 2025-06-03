@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^1.2.19",
+    "@ai-sdk/react": "^1.2.12",
     "@codesandbox/sandpack-react": "^2.20.0",
     "@google/generative-ai": "^0.15.0",
     "@hookform/resolvers": "^3.9.0",
