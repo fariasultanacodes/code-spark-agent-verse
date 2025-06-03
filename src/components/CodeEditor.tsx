@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import Editor from '@monaco-editor/react';
 import { Sandpack } from '@codesandbox/sandpack-react';
@@ -7,6 +6,7 @@ import FileExplorer from './FileExplorer';
 import FileTabs from './FileTabs';
 import { Button } from './ui/button';
 import { Play, Code, MessageSquare, Settings, Sidebar } from 'lucide-react';
+import EnhancedAIChat from './EnhancedAIChat';
 
 interface FileItem {
   id: string;
@@ -110,6 +110,7 @@ export const Button = ({ children, onClick, variant = 'primary' }) => {
   const [activeFileId, setActiveFileId] = useState<string>('app-js');
   const [chatVisible, setChatVisible] = useState(false);
   const [sidebarVisible, setSidebarVisible] = useState(true);
+  const [currentFileContent, setCurrentFileContent] = useState<string | undefined>(files.find(f => f.id === activeFileId)?.content);
 
   const activeFile = files.find(f => f.id === activeFileId);
 
@@ -242,8 +243,8 @@ export const Button = ({ children, onClick, variant = 'primary' }) => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex">
-        {/* Sidebar */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* File Explorer Sidebar */}
         {sidebarVisible && (
           <div className="w-64 border-r border-gray-700">
             <FileExplorer
@@ -257,74 +258,68 @@ export const Button = ({ children, onClick, variant = 'primary' }) => {
           </div>
         )}
 
-        {/* Code/Preview Area */}
-        <div className={`${chatVisible ? 'w-2/3' : 'flex-1'} transition-all duration-300 flex flex-col`}>
-          {activeTab === 'code' && (
-            <>
-              <FileTabs
-                tabs={openTabsData}
-                activeTabId={activeFileId}
-                onTabSelect={setActiveFileId}
-                onTabClose={handleTabClose}
-              />
-              <div className="flex-1">
-                <Editor
-                  height="100%"
-                  defaultLanguage="javascript"
-                  value={activeFile?.content || ''}
-                  onChange={handleEditorChange}
-                  theme="vs-dark"
-                  options={{
-                    minimap: { enabled: false },
-                    fontSize: 14,
-                    lineNumbers: 'on',
-                    automaticLayout: true,
-                    tabSize: 2,
-                    insertSpaces: true,
-                    wordWrap: 'on',
-                  }}
-                />
-              </div>
-            </>
-          )}
-          
-          {activeTab === 'preview' && (
-            <div className="h-full bg-white">
-              <Sandpack
-                template="react"
-                files={getSandpackFiles()}
-                options={{
-                  showNavigator: false,
-                  showTabs: false,
-                  showLineNumbers: true,
-                  editorHeight: '100%',
-                  layout: 'preview',
-                }}
-                theme="dark"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* AI Chat Panel */}
-        {chatVisible && (
-          <div className="w-1/3 border-l border-gray-700 bg-gray-800">
-            <GeminiChat 
-              code={activeFile?.content || ''} 
-              onCodeUpdate={(newCode) => {
-                if (activeFileId) {
-                  setFiles(prevFiles => 
-                    prevFiles.map(file => 
-                      file.id === activeFileId 
-                        ? { ...file, content: newCode }
-                        : file
-                    )
-                  );
-                }
-              }} 
+        {/* Editor and Preview Area */}
+        <div className="flex-1 flex flex-col">
+          {/* File Tabs */}
+          <div className="flex-1">
+            <FileTabs
+              tabs={openTabsData}
+              activeTabId={activeFileId}
+              onTabSelect={setActiveFileId}
+              onTabClose={handleTabClose}
             />
           </div>
-        )}
+
+          {/* Editor/Preview Content */}
+          <div className="flex-1 flex overflow-hidden">
+            {/* Left Panel - Editor or Preview */}
+            <div className={`${chatVisible ? 'w-2/3' : 'w-full'} flex flex-col`}>
+              {activeTab === 'code' ? (
+                <div className="flex-1">
+                  <Editor
+                    height="100%"
+                    defaultLanguage="javascript"
+                    value={currentFileContent}
+                    onChange={handleEditorChange}
+                    theme="vs-dark"
+                    options={{
+                      fontSize: 14,
+                      minimap: { enabled: false },
+                      scrollBeyondLastLine: false,
+                      automaticLayout: true,
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="flex-1 bg-white">
+                  <Sandpack
+                    template="react"
+                    files={{
+                      '/App.js': currentFileContent,
+                    }}
+                    options={{
+                      showNavigator: true,
+                      showTabs: true,
+                      showLineNumbers: true,
+                      editorHeight: '100%',
+                    }}
+                    theme="dark"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Right Panel - Enhanced AI Chat */}
+            {chatVisible && (
+              <div className="w-1/3 border-l border-gray-700 bg-gray-800">
+                <EnhancedAIChat 
+                  code={currentFileContent} 
+                  onCodeUpdate={setCurrentFileContent}
+                />
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
